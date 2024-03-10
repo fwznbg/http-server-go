@@ -37,14 +37,16 @@ func getStatusText(status int) string {
 }
 
 func (req *Request) buildResponse(status int, body string) string {
-	response := req.Version + " " + getStatusText(status) + SEPARATOR
+	response := req.Version + " " + getStatusText(status) + SEPARATOR 
 	if body != "" {
-		response += ContentType + " " + TextType + SEPARATOR
-		response += ContentLength + " " + fmt.Sprint(len(body)) + SEPARATOR
+    response += ContentType + ": " + TextType + SEPARATOR
+    response += ContentLength + ": " + fmt.Sprint(len(body)) + SEPARATOR
 		response += SEPARATOR
 		response += body
-	}
-	return response + SEPARATOR
+	}else{
+    response += SEPARATOR
+  }
+	return response
 }
 
 func parseRequest(conn net.Conn) (Request, error) {
@@ -83,13 +85,13 @@ func handleConnection(conn net.Conn) {
 	}
 
 	if req.Path == "/" {
-		conn.Write([]byte(fmt.Sprintf("%s %s", req.Version, OK_RESPONSE+SEPARATOR+SEPARATOR)))
+		conn.Write([]byte(req.buildResponse(200, "")))
 	} else if strings.Contains(req.Path, "/echo") {
 		conn.Write([]byte(req.buildResponse(200, strings.Trim(req.Path, "/echo/"))))
 	} else if req.Path == "/user-agent" {
 		conn.Write([]byte(req.buildResponse(200, req.Headers["User-Agent"])))
 	} else {
-		conn.Write([]byte(fmt.Sprintf("%s %s", req.Version, NOT_FOUND_RESPONSE+SEPARATOR+SEPARATOR)))
+		conn.Write([]byte(req.buildResponse(404, "")))
 	}
 }
 
