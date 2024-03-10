@@ -37,14 +37,22 @@ func getStatusText(status int) string {
 }
 
 func (req *Request) buildResponse(status int, body string) string {
+<<<<<<< Updated upstream
 	response := req.Version + " " + getStatusText(status) + SEPARATOR + SEPARATOR
+=======
+	response := req.Version + " " + getStatusText(status) + SEPARATOR
+>>>>>>> Stashed changes
 	if body != "" {
 		response += ContentType + " " + TextType + SEPARATOR
 		response += ContentLength + " " + fmt.Sprint(len(body)) + SEPARATOR
 		response += SEPARATOR
 		response += body
 	}
+<<<<<<< Updated upstream
 	return response
+=======
+	return response + SEPARATOR
+>>>>>>> Stashed changes
 }
 
 func parseRequest(conn net.Conn) (Request, error) {
