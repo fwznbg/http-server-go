@@ -87,7 +87,7 @@ func handleConnection(conn net.Conn) {
 	if req.Path == "/" {
 		conn.Write([]byte(req.buildResponse(200, "")))
 	} else if strings.Contains(req.Path, "/echo") {
-		conn.Write([]byte(req.buildResponse(200, strings.Trim(req.Path, "/echo/"))))
+		conn.Write([]byte(req.buildResponse(200, strings.TrimPrefix(req.Path, "/echo/"))))
 	} else if req.Path == "/user-agent" {
 		conn.Write([]byte(req.buildResponse(200, req.Headers["User-Agent"])))
 	} else {
