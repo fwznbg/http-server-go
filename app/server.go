@@ -15,8 +15,14 @@ type RequestHeader struct {
 }
 
 const (
-	OK_RESPONSE        = "200 OK\r\n\r\n"
-	NOT_FOUND_RESPONSE = "404 NOT FOUND\r\n\r\n"
+  SEPARATOR = "\r\n"
+	OK_RESPONSE        = "200 OK" 
+	NOT_FOUND_RESPONSE = "404 NOT FOUND" 
+  ContentType = "Content-Type"
+  TextType = "text/plain"
+  ContentLength = "Content-Length"
+
+
 )
 
 func main() {
@@ -47,12 +53,23 @@ func main() {
 			Path:    headerArr[1],
 			Version: headerArr[2],
 		}
-
 		if reqHeader.Path == "/" {
 			conn.Write([]byte(fmt.Sprintf("%s %s", reqHeader.Version, OK_RESPONSE)))
-		} else {
+		} else if strings.Contains(reqHeader.Path, "/echo"){
+      reqContent := reqHeader.Path[6:]
+      resHeader := reqHeader.Version + " " + OK_RESPONSE + SEPARATOR
+      resHeader += ContentType + ": " + TextType + SEPARATOR
+      resHeader += ContentLength + ": " + fmt.Sprint(len(reqContent)) + SEPARATOR
+      resHeader += SEPARATOR  
+      resBody := reqContent 
+      conn.Write([]byte(resHeader + resBody))
+    }else{
 			conn.Write([]byte(fmt.Sprintf("%s %s", reqHeader.Version, NOT_FOUND_RESPONSE)))
 		}
 
+    err = conn.Close()
+    if err != nil {
+      fmt.Println("Error closing tcp connection: ", err.Error())
+    }
 	}
 }
