@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"errors"
+	"flag"
 	"fmt"
 	"net"
 	"os"
@@ -25,6 +26,13 @@ const (
 	AppOctetStreamType = "application/octet-stream"
 	ContentLength      = "Content-Length"
 )
+
+var dir *string
+
+func init() {
+	dir = flag.String("directory", "./", "")
+	flag.Parse()
+}
 
 func getStatusText(status int) string {
 	switch status {
@@ -93,7 +101,7 @@ func handleConnection(conn net.Conn) {
 		conn.Write([]byte(req.buildResponse(200, TextPlainType, req.Headers["User-Agent"])))
 	} else if strings.HasPrefix(req.Path, "/files") {
 		filename := strings.TrimPrefix(req.Path, "/files/")
-		data, err := os.ReadFile(filename)
+		data, err := os.ReadFile(*dir + "/" + filename)
 		if err != nil {
 			conn.Write([]byte(req.buildResponse(404, "", "")))
 		} else {
