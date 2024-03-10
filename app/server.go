@@ -54,7 +54,7 @@ func main() {
 			Version: headerArr[2],
 		}
 		if reqHeader.Path == "/" {
-			conn.Write([]byte(fmt.Sprintf("%s %s", reqHeader.Version, OK_RESPONSE + SEPARATOR)))
+			conn.Write([]byte(fmt.Sprintf("%s %s", reqHeader.Version, OK_RESPONSE + SEPARATOR + SEPARATOR)))
 		} else if strings.Contains(reqHeader.Path, "/echo"){
       reqContent := reqHeader.Path[6:]
       resHeader := reqHeader.Version + " " + OK_RESPONSE + SEPARATOR
@@ -64,7 +64,7 @@ func main() {
       resBody := reqContent 
       conn.Write([]byte(resHeader + resBody))
     }else{
-			conn.Write([]byte(fmt.Sprintf("%s %s", reqHeader.Version, NOT_FOUND_RESPONSE + SEPARATOR)))
+			conn.Write([]byte(fmt.Sprintf("%s %s", reqHeader.Version, NOT_FOUND_RESPONSE + SEPARATOR + SEPARATOR)))
 		}
 
     err = conn.Close()
