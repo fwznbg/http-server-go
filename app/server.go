@@ -21,7 +21,8 @@ const (
 	OK_RESPONSE        = "200 OK"
 	NOT_FOUND_RESPONSE = "404 NOT FOUND"
 	ContentType        = "Content-Type"
-	TextType           = "text/plain"
+	TextPlainType      = "text/plain"
+	AppOctetStreamType = "application/octet-stream"
 	ContentLength      = "Content-Length"
 )
 
@@ -36,16 +37,16 @@ func getStatusText(status int) string {
 	}
 }
 
-func (req *Request) buildResponse(status int, body string) string {
-	response := req.Version + " " + getStatusText(status) + SEPARATOR 
+func (req *Request) buildResponse(status int, contentType string, body string) string {
+	response := req.Version + " " + getStatusText(status) + SEPARATOR
 	if body != "" {
-    response += ContentType + ": " + TextType + SEPARATOR
-    response += ContentLength + ": " + fmt.Sprint(len(body)) + SEPARATOR
+		response += ContentType + ": " + contentType + SEPARATOR
+		response += ContentLength + ": " + fmt.Sprint(len(body)) + SEPARATOR
 		response += SEPARATOR
 		response += body
-	}else{
-    response += SEPARATOR
-  }
+	} else {
+		response += SEPARATOR
+	}
 	return response
 }
 
@@ -85,13 +86,21 @@ func handleConnection(conn net.Conn) {
 	}
 
 	if req.Path == "/" {
-		conn.Write([]byte(req.buildResponse(200, "")))
-	} else if strings.Contains(req.Path, "/echo") {
-		conn.Write([]byte(req.buildResponse(200, strings.TrimPrefix(req.Path, "/echo/"))))
+		conn.Write([]byte(req.buildResponse(200, "", "")))
+	} else if strings.HasPrefix(req.Path, "/echo") {
+		conn.Write([]byte(req.buildResponse(200, TextPlainType, strings.TrimPrefix(req.Path, "/echo/"))))
 	} else if req.Path == "/user-agent" {
-		conn.Write([]byte(req.buildResponse(200, req.Headers["User-Agent"])))
+		conn.Write([]byte(req.buildResponse(200, TextPlainType, req.Headers["User-Agent"])))
+	} else if strings.HasPrefix(req.Path, "/files") {
+		filename := strings.TrimPrefix(req.Path, "/files/")
+		data, err := os.ReadFile(filename)
+		if err != nil {
+			conn.Write([]byte(req.buildResponse(404, "", "")))
+		} else {
+			conn.Write([]byte(req.buildResponse(200, AppOctetStreamType, string(data))))
+		}
 	} else {
-		conn.Write([]byte(req.buildResponse(404, "")))
+		conn.Write([]byte(req.buildResponse(404, "", "")))
 	}
 }
 
