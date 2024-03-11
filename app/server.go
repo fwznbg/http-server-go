@@ -1,12 +1,14 @@
 package main
 
 import (
+	// "errors"
 	"bufio"
 	"errors"
 	"flag"
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -15,12 +17,14 @@ type Request struct {
 	Path    string
 	Version string
 	Headers map[string]string
+  Body []byte
 }
 
 const (
 	SEPARATOR          = "\r\n"
 	OK_RESPONSE        = "200 OK"
 	NOT_FOUND_RESPONSE = "404 NOT FOUND"
+  CREATED_RESPONSE = "201 CREATED"
 	ContentType        = "Content-Type"
 	TextPlainType      = "text/plain"
 	AppOctetStreamType = "application/octet-stream"
@@ -38,6 +42,8 @@ func getStatusText(status int) string {
 	switch status {
 	case 200:
 		return OK_RESPONSE
+  case 201:
+    return CREATED_RESPONSE
 	case 404:
 		return NOT_FOUND_RESPONSE
 	default:
@@ -58,31 +64,55 @@ func (req *Request) buildResponse(status int, contentType string, body string) s
 	return response
 }
 
-func parseRequest(conn net.Conn) (Request, error) {
-	var err error
-	scanner := bufio.NewScanner(conn)
-	req := Request{
+func parseRequest(conn net.Conn) (req Request, err error) {
+  reader := bufio.NewReader(conn)
+	req = Request{
 		Headers: map[string]string{},
 	}
-	if scanner.Scan() {
-		header := strings.Fields(scanner.Text())
-		req.Method = header[0]
-		req.Path = header[1]
-		req.Version = header[2]
-	} else {
-		err = errors.New("Error parsing request header")
-	}
 
-	for scanner.Scan() {
-		line := scanner.Text()
-		header := strings.Split(line, ": ")
-		if len(line) != 0 {
-			req.Headers[header[0]] = header[1]
-		} else {
-			break
-		}
-	}
+  attr, err := reader.ReadString('\n')
+  if err != nil {
+    return
+  }
 
+  reqLine := strings.Fields(attr)
+  req.Method = reqLine[0]
+  req.Path = reqLine[1]
+  req.Version = reqLine[2]
+
+  // parsing header attribute
+  for {
+    line, err := reader.ReadString('\n')
+    if err != nil || line == "\r\n" {
+      break
+    }
+    key, val, ok := strings.Cut(line, ": ") 
+    if !ok {
+      err = errors.New("Invalid header")
+      break
+    }
+
+    req.Headers[key] = strings.TrimSpace(val)
+  }
+  
+  if err!=nil{
+    return
+  }
+
+  // parsing body
+  if length, ok := req.Headers[ContentLength]; ok {
+    contentLen, err := strconv.Atoi(length)
+    if err != nil {
+      fmt.Println("Error while parsing content length")
+      os.Exit(1)
+    }
+    req.Body = make([]byte, contentLen)
+    _, err = reader.Read(req.Body)
+    if err != nil {
+      fmt.Println("Error while parsing body")
+      os.Exit(1)
+    }
+  }
 	return req, err
 }
 func handleConnection(conn net.Conn) {
@@ -101,11 +131,25 @@ func handleConnection(conn net.Conn) {
 		conn.Write([]byte(req.buildResponse(200, TextPlainType, req.Headers["User-Agent"])))
 	} else if strings.HasPrefix(req.Path, "/files") {
 		filename := strings.TrimPrefix(req.Path, "/files/")
-		data, err := os.ReadFile(*dir + "/" + filename)
-		if err != nil {
-			conn.Write([]byte(req.buildResponse(404, "", "")))
-		} else {
-			conn.Write([]byte(req.buildResponse(200, AppOctetStreamType, string(data))))
+		if req.Method == "GET" {
+			data, err := os.ReadFile(*dir + "/" + filename)
+			if err != nil {
+				conn.Write([]byte(req.buildResponse(404, "", "")))
+			} else {
+				conn.Write([]byte(req.buildResponse(200, AppOctetStreamType, string(data))))
+			}
+		} else if req.Method == "POST" {
+      file, err := os.Create(*dir + "/" + filename)
+      if err != nil {
+        fmt.Println("Error creating new file")
+        os.Exit(1)
+      }
+      _, err = file.Write(req.Body)
+      if err != nil {
+        fmt.Println("Error writing file")
+        os.Exit(1)
+      }
+      conn.Write([]byte(req.buildResponse(201, "", "")))
 		}
 	} else {
 		conn.Write([]byte(req.buildResponse(404, "", "")))
